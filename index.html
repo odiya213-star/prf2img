@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="브라우저에서만 PDF 페이지를 PNG로 변환하고 ZIP으로 저장합니다.">
+  <meta name="description" content="브라우저에서만 PDF 안에 포함된 이미지 파일을 추출해 ZIP으로 저장합니다.">
   <title>PDF 이미지 추출기</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b1220'/%3E%3Cpath d='M15 14h24l10 10v26H15z' fill='%237dd3fc'/%3E%3Cpath d='M39 14v11h10M22 42l7-8 6 6 5-5 6 7' fill='none' stroke='%230b1220' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
@@ -17,8 +17,8 @@
 
     <section class="intro">
       <p class="eyebrow">LOCAL PDF TOOL</p>
-      <h1>PDF 페이지를 이미지로<br><em>바로 꺼내세요.</em></h1>
-      <p class="lede">PDF를 선택하면 페이지별 PNG 이미지를 만들고 하나의 ZIP 파일로 묶습니다. 파일은 서버에 업로드되지 않습니다.</p>
+      <h1>PDF 안의 이미지만<br><em>바로 꺼내세요.</em></h1>
+      <p class="lede">페이지 전체를 캡처하지 않습니다. PDF 안에 포함된 이미지 객체만 PNG로 추출해 하나의 ZIP 파일로 묶습니다. 파일은 서버에 업로드되지 않습니다.</p>
     </section>
 
     <section class="workspace" aria-labelledby="upload-title">
@@ -42,14 +42,7 @@
       <ul id="fileList" class="file-list" aria-live="polite"></ul>
 
       <div class="action-row">
-        <div class="quality-control">
-          <label for="quality">이미지 품질</label>
-          <select id="quality">
-            <option value="1.25">작은 파일</option>
-            <option value="1.65" selected>권장</option>
-            <option value="2">고화질</option>
-          </select>
-        </div>
+        <p class="extract-note">PDF 내부 이미지 객체만 추출</p>
         <button id="convertBtn" class="convert-button" type="button" disabled>
           <span>이미지 추출 후 ZIP 다운로드</span><span aria-hidden="true">↗</span>
         </button>

@@ -10,7 +10,6 @@ const emptyState = document.querySelector('#emptyState');
 const convertButton = document.querySelector('#convertBtn');
 const clearButton = document.querySelector('#clearBtn');
 const status = document.querySelector('#status');
-const quality = document.querySelector('#quality');
 
 function formatBytes(bytes) {
   if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
@@ -51,26 +50,54 @@ clearButton.addEventListener('click', () => { files.length = 0; status.textConte
 ['dragleave','drop'].forEach(type => dropZone.addEventListener(type, event => { event.preventDefault(); dropZone.classList.remove('is-dragging'); }));
 dropZone.addEventListener('drop', event => addFiles(event.dataTransfer.files));
 
-async function pageToPng(page, requestedScale) {
-  const viewportAtOne = page.getViewport({ scale: 1 });
-  const scale = Math.min(requestedScale, 2600 / Math.max(viewportAtOne.width, viewportAtOne.height));
-  const viewport = page.getViewport({ scale });
+async function imageObjectToPng(image) {
+  const width = image.width || image.displayWidth;
+  const height = image.height || image.displayHeight;
+  if (!width || !height) throw new Error('이미지 크기 정보를 읽을 수 없습니다.');
   const canvas = document.createElement('canvas');
-  canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
-  const context = canvas.getContext('2d', { alpha: false });
-  await page.render({ canvasContext: context, viewport, background: '#ffffff' }).promise;
+  canvas.width = width; canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (image.data && image.data.length === width * height * 4) {
+    context.putImageData(new ImageData(new Uint8ClampedArray(image.data), width, height), 0, 0);
+  } else {
+    context.drawImage(image, 0, 0, width, height);
+  }
   return new Uint8Array(await (await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))).arrayBuffer());
 }
 
-async function convertPdf(file, scale, report) {
+function pageObject(page, objectId) {
+  if (typeof objectId !== 'string') return Promise.resolve(objectId);
+  return new Promise((resolve, reject) => {
+    try {
+      const object = page.objs.get(objectId, resolve);
+      if (object !== undefined) resolve(object);
+    } catch (error) { reject(error); }
+  });
+}
+
+async function extractImages(file, report) {
   const bytes = new Uint8Array(await file.arrayBuffer());
   const task = pdfjsLib.getDocument({ data: bytes, disableAutoFetch: true, disableStream: true });
   const pdf = await task.promise;
   const output = [];
+  const seen = new Set();
+  const imageOps = new Set([pdfjsLib.OPS.paintImageXObject, pdfjsLib.OPS.paintJpegXObject, pdfjsLib.OPS.paintInlineImageXObject]);
   for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
     report(pageNo, pdf.numPages);
-    const png = await pageToPng(await pdf.getPage(pageNo), scale);
-    output.push({ name: `${safeName(file.name)}/page-${String(pageNo).padStart(3, '0')}.png`, data: png });
+    const page = await pdf.getPage(pageNo);
+    const operators = await page.getOperatorList();
+    for (let i = 0; i < operators.fnArray.length; i++) {
+      if (!imageOps.has(operators.fnArray[i])) continue;
+      const reference = operators.argsArray[i][0];
+      const identity = typeof reference === 'string' ? reference : `inline-${pageNo}-${i}`;
+      if (seen.has(identity)) continue;
+      seen.add(identity);
+      try {
+        const png = await imageObjectToPng(await pageObject(page, reference));
+        output.push({ name: `${safeName(file.name)}/image-${String(output.length + 1).padStart(3, '0')}.png`, data: png });
+      } catch (error) { console.warn('이미지 객체를 건너뛰었습니다.', error); }
+    }
+    page.cleanup();
   }
   await pdf.destroy();
   return output;
@@ -90,11 +117,11 @@ function zip(entries) {
 async function pool(items, limit, worker) { let cursor = 0; await Promise.all(Array.from({length: Math.min(limit, items.length)}, async () => { while (cursor < items.length) { const item = items[cursor++]; await worker(item, cursor); } })); }
 
 convertButton.addEventListener('click', async () => {
-  const selected = [...files]; const scale = Number(quality.value); const results = []; const failures = [];
+  const selected = [...files]; const results = []; const failures = [];
   convertButton.disabled = true; clearButton.disabled = true; input.disabled = true;
   try {
     await pool(selected, Math.min(2, navigator.hardwareConcurrency || 2), async (file, number) => {
-      try { const images = await convertPdf(file, scale, (page, total) => status.textContent = `처리 중: ${number}/${selected.length} · ${file.name} (${page}/${total}쪽)`); results.push(...images); }
+      try { const images = await extractImages(file, (page, total) => status.textContent = `이미지 탐색 중: ${number}/${selected.length} · ${file.name} (${page}/${total}쪽)`); results.push(...images); }
       catch (error) { console.error(error); failures.push(file.name); }
     });
     if (!results.length) throw new Error('이미지를 만들 수 있는 PDF가 없습니다.');
