@@ -57,8 +57,16 @@ async function imageObjectToPng(image) {
   const canvas = document.createElement('canvas');
   canvas.width = width; canvas.height = height;
   const context = canvas.getContext('2d');
-  if (image.data && image.data.length === width * height * 4) {
+  if (image.bitmap) {
+    context.drawImage(image.bitmap, 0, 0, width, height);
+  } else if (image.data && image.data.length === width * height * 4) {
     context.putImageData(new ImageData(new Uint8ClampedArray(image.data), width, height), 0, 0);
+  } else if (image.data && image.data.length === width * height * 3) {
+    const pixels = context.createImageData(width, height);
+    for (let source = 0, target = 0; source < image.data.length; source += 3, target += 4) {
+      pixels.data[target] = image.data[source]; pixels.data[target + 1] = image.data[source + 1]; pixels.data[target + 2] = image.data[source + 2]; pixels.data[target + 3] = 255;
+    }
+    context.putImageData(pixels, 0, 0);
   } else {
     context.drawImage(image, 0, 0, width, height);
   }
@@ -69,8 +77,8 @@ function pageObject(page, objectId) {
   if (typeof objectId !== 'string') return Promise.resolve(objectId);
   return new Promise((resolve, reject) => {
     try {
-      const object = page.objs.get(objectId, resolve);
-      if (object !== undefined) resolve(object);
+      if (page.objs.has(objectId)) resolve(page.objs.get(objectId));
+      else page.objs.get(objectId, resolve);
     } catch (error) { reject(error); }
   });
 }
@@ -81,7 +89,7 @@ async function extractImages(file, report) {
   const pdf = await task.promise;
   const output = [];
   const seen = new Set();
-  const imageOps = new Set([pdfjsLib.OPS.paintImageXObject, pdfjsLib.OPS.paintJpegXObject, pdfjsLib.OPS.paintInlineImageXObject]);
+  const imageOps = new Set([pdfjsLib.OPS.paintImageXObject, pdfjsLib.OPS.paintJpegXObject, pdfjsLib.OPS.paintInlineImageXObject, pdfjsLib.OPS.paintImageXObjectRepeat]);
   for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
     report(pageNo, pdf.numPages);
     const page = await pdf.getPage(pageNo);
@@ -119,6 +127,7 @@ async function pool(items, limit, worker) { let cursor = 0; await Promise.all(Ar
 convertButton.addEventListener('click', async () => {
   const selected = [...files]; const results = []; const failures = [];
   convertButton.disabled = true; clearButton.disabled = true; input.disabled = true;
+  status.textContent = `${selected.length}개 PDF에서 이미지를 찾는 중입니다…`;
   try {
     await pool(selected, Math.min(2, navigator.hardwareConcurrency || 2), async (file, number) => {
       try { const images = await extractImages(file, (page, total) => status.textContent = `이미지 탐색 중: ${number}/${selected.length} · ${file.name} (${page}/${total}쪽)`); results.push(...images); }
