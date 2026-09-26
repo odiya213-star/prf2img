@@ -118,7 +118,8 @@ function u16(n) { return [n&255,(n>>>8)&255]; } function u32(n) { return [n&255,
 function zip(entries) {
   const encoder = new TextEncoder(), parts = [], directory = []; let offset = 0;
   const date = new Date(); const dosTime = (date.getHours()<<11)|(date.getMinutes()<<5)|(date.getSeconds()>>1); const dosDate = ((date.getFullYear()-1980)<<9)|((date.getMonth()+1)<<5)|date.getDate();
-  for (const entry of entries) { const name = encoder.encode(entry.name); const data = entry.data; const crc = crc32(data); const header = new Uint8Array([0x50,0x4b,3,4,20,0,0,0,0,0,...u16(dosTime),...u16(dosDate),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),0,0,...name]); parts.push(header,data); directory.push(new Uint8Array([0x50,0x4b,1,2,20,0,20,0,0,0,0,0,...u16(dosTime),...u16(dosDate),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),0,0,0,0,0,0,0,0,...u32(offset),...name])); offset += header.length + data.length; }
+  // ZIP's UTF-8 filename bit (0x0800) makes Korean folder/file names display correctly in Windows Explorer.
+  for (const entry of entries) { const name = encoder.encode(entry.name); const data = entry.data; const crc = crc32(data); const header = new Uint8Array([0x50,0x4b,3,4,20,0,0,8,0,0,...u16(dosTime),...u16(dosDate),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),0,0,...name]); parts.push(header,data); directory.push(new Uint8Array([0x50,0x4b,1,2,20,0,20,0,0,8,0,0,...u16(dosTime),...u16(dosDate),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),0,0,0,0,0,0,0,0,...u32(offset),...name])); offset += header.length + data.length; }
   const dirLength = directory.reduce((total, part) => total + part.length, 0); const end = new Uint8Array([0x50,0x4b,5,6,0,0,0,0,...u16(entries.length),...u16(entries.length),...u32(dirLength),...u32(offset),0,0]); return new Blob([...parts,...directory,end], { type:'application/zip' });
 }
 
