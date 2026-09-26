@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="브라우저에서만 PDF 페이지를 PNG로 변환하고 ZIP으로 저장합니다.">
+  <title>PDF 이미지 추출기</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b1220'/%3E%3Cpath d='M15 14h24l10 10v26H15z' fill='%237dd3fc'/%3E%3Cpath d='M39 14v11h10M22 42l7-8 6 6 5-5 6 7' fill='none' stroke='%230b1220' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header>
+      <a class="brand" href="./" aria-label="PDF 이미지 추출기 홈"><span class="brand-mark">▧</span> PDF 이미지 추출기</a>
+      <span class="local-badge"><i></i> 이 기기에서만 처리</span>
+    </header>
+
+    <section class="intro">
+      <p class="eyebrow">LOCAL PDF TOOL</p>
+      <h1>PDF 페이지를 이미지로<br><em>바로 꺼내세요.</em></h1>
+      <p class="lede">PDF를 선택하면 페이지별 PNG 이미지를 만들고 하나의 ZIP 파일로 묶습니다. 파일은 서버에 업로드되지 않습니다.</p>
+    </section>
+
+    <section class="workspace" aria-labelledby="upload-title">
+      <div class="workspace-heading">
+        <div>
+          <h2 id="upload-title">PDF 파일 선택</h2>
+          <p>여러 파일을 한 번에 추가할 수 있습니다.</p>
+        </div>
+        <button id="clearBtn" class="text-button" type="button" disabled>목록 비우기</button>
+      </div>
+
+      <label id="dropZone" class="drop-zone" for="fileInput">
+        <input id="fileInput" type="file" accept="application/pdf,.pdf" multiple>
+        <span class="upload-icon" aria-hidden="true">↑</span>
+        <strong>PDF를 이곳에 끌어 놓으세요</strong>
+        <span>또는 <b>파일 찾아보기</b></span>
+        <small>여러 파일 선택 가능 · 파일은 이 브라우저 밖으로 나가지 않습니다</small>
+      </label>
+
+      <div id="emptyState" class="empty-state">선택한 파일이 여기에 표시됩니다.</div>
+      <ul id="fileList" class="file-list" aria-live="polite"></ul>
+
+      <div class="action-row">
+        <div class="quality-control">
+          <label for="quality">이미지 품질</label>
+          <select id="quality">
+            <option value="1.25">작은 파일</option>
+            <option value="1.65" selected>권장</option>
+            <option value="2">고화질</option>
+          </select>
+        </div>
+        <button id="convertBtn" class="convert-button" type="button" disabled>
+          <span>이미지 추출 후 ZIP 다운로드</span><span aria-hidden="true">↗</span>
+        </button>
+      </div>
+      <p id="status" class="status" role="status"></p>
+    </section>
+
+    <section class="privacy-note">
+      <span aria-hidden="true">⌁</span>
+      <div><strong>개인정보 보호 설계</strong><p>선택한 PDF와 생성된 PNG는 브라우저 메모리 안에서만 읽고 변환합니다. 업로드, 계정, 저장 서버가 없으며 페이지를 닫으면 작업 데이터도 사라집니다.</p></div>
+    </section>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
